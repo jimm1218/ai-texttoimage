@@ -3,6 +3,7 @@ import requests
 import io
 from PIL import Image
 import os
+import time
 
 # 設定頁面資訊
 st.set_page_config(page_title="AI 圖像生成器", page_icon="🎨")
@@ -20,27 +21,42 @@ def query(payload, token):
         return None
 
     headers = {"Authorization": f"Bearer {token}"}
-    try:
-        # 增加 timeout 參數 (例如 60 秒)，避免伺服器回應過慢導致連線強行中斷
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            return response.content
-        elif response.status_code == 503:
-            st.warning("⚠️ 模型正在 Hugging Face 伺服器上載入中（冷啟動），請稍候 20-30 秒後再次點擊生成。")
-        elif response.status_code == 401:
-            st.error("❌ Token 無效，請檢查你的 Hugging Face Token 是否正確且具備 Read 權限。")
-        else:
-            st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # 增加 timeout 參數 (例如 60 秒)，避免伺服器回應過慢導致連線強行中斷
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
             
-    except requests.exceptions.ConnectionError as e:
-        st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是暫時性的，請檢查網路或稍後再試。")
-        # 開發階段：印出完整紅字錯誤方便 debug
-        st.exception(e)
-    except Exception as e:
-        st.error(f"❌ 發生非預期錯誤: {e}")
-        st.exception(e)
-        
+            if response.status_code == 200:
+                return response.content
+            elif response.status_code == 503:
+                if attempt < max_retries - 1:
+                    time.sleep(5)  # 模型冷啟動，等待 5 秒後自動重試
+                    continue
+                st.warning("⚠️ 模型正在 Hugging Face 伺服器上載入中（冷啟動），請稍候 20-30 秒後再次點擊生成。")
+                return None
+            elif response.status_code == 401:
+                st.error("❌ Token 無效，請檢查你的 Hugging Face Token 是否正確且具備 Read 權限。")
+                return None
+            else:
+                st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
+                return None
+                
+        except requests.exceptions.ConnectionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(3)  # 網路抖動，等待 3 秒後自動重試連線
+                continue
+            st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是 Streamlit Cloud 的暫時性網路問題。")
+            with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
+                st.exception(e)
+            return None
+        except Exception as e:
+            st.error(f"❌ 發生非預期錯誤: {e}")
+            with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
+                st.exception(e)
+            return None
+            
     return None
 
 # 側邊欄設定
