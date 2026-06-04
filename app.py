@@ -1,9 +1,8 @@
 import streamlit as st
-import requests
 import io
 from PIL import Image
 import os
-import time
+from huggingface_hub import InferenceClient
 
 # 設定頁面資訊
 st.set_page_config(page_title="AI 圖像生成器", page_icon="🎨")
@@ -11,57 +10,23 @@ st.set_page_config(page_title="AI 圖像生成器", page_icon="🎨")
 st.title("🎨 AI 圖像生成 Web App")
 st.write("輸入一段文字，讓 AI 為你創作圖片。")
 
-def query(payload, token, api_url):
-    """發送請求至 Hugging Face Inference API"""
+def generate_image(prompt, token, model_id):
+    """使用官方 huggingface_hub 庫發送請求"""
     if not token:
         st.error("❌ 請先在左側邊欄輸入你的 Hugging Face Access Token。")
         return None
 
-    headers = {"Authorization": f"Bearer {token}"}
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            # 增加 timeout 參數 (例如 60 秒)，避免伺服器回應過慢導致連線強行中斷
-            response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                return response.content
-            elif response.status_code == 503:
-                if attempt < max_retries - 1:
-                    time.sleep(5)  # 模型冷啟動，等待 5 秒後自動重試
-                    continue
-                st.warning("⚠️ 模型正在 Hugging Face 伺服器上載入中（冷啟動），請稍候 20-30 秒後再次點擊生成。")
-                return None
-            elif response.status_code == 401:
-                st.error("❌ Token 無效，請檢查你的 Hugging Face Token 是否正確且具備 Read 權限。")
-                return None
-            else:
-                st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
-                return None
-                
-        except requests.exceptions.ConnectionError as e:
-            if attempt < max_retries - 1:
-                time.sleep(3)  # 網路抖動，等待 3 秒後自動重試連線
-                continue
-            
-            error_msg = str(e)
-            if "NameResolutionError" in error_msg:
-                st.error("📡 DNS 解析失敗：Streamlit Cloud 伺服器暫時無法連上外網。")
-                st.info("💡 **解決方法**：這是 Streamlit 免費伺服器的常見 Bug。請點擊畫面右下角的「Manage app」-> 選擇「Reboot app」來重啟伺服器。")
-            else:
-                st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是 Streamlit Cloud 的暫時性網路問題。")
-                
-            with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
-                st.code(error_msg)
-            return None
-        except Exception as e:
-            st.error(f"❌ 發生非預期錯誤: {e}")
-            with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
-                st.code(str(e))
-            return None
-            
-    return None
+    try:
+        client = InferenceClient(model=model_id, token=token)
+        # text_to_image 會自動處理重試與 503 等待，並直接回傳 PIL.Image 格式
+        image = client.text_to_image(prompt)
+        return image
+    except Exception as e:
+        error_msg = str(e)
+        st.error(f"❌ 圖片生成失敗！")
+        with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
+            st.code(error_msg)
+        return None
 
 # 側邊欄設定
 with st.sidebar:
@@ -92,11 +57,9 @@ if submit:
         st.warning("請輸入提示詞！")
     else:
         with st.spinner("AI 正在繪圖中，請稍候..."):
-            api_url = f"https://api-inference.huggingface.co/models/{model_id}"
-            image_bytes = query({"inputs": prompt}, user_token, api_url)
+            image = generate_image(prompt, user_token, model_id)
             
-            if image_bytes:
-                image = Image.open(io.BytesIO(image_bytes))
+            if image:
                 st.image(image, caption=f"生成結果: {prompt}", use_column_width=True)
                 
                 # 下載按鈕
