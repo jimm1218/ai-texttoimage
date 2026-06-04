@@ -33,7 +33,7 @@ def query(payload, token):
         else:
             st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
             
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
         st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是暫時性的，請檢查網路或稍後再試。")
         # 開發階段：印出完整紅字錯誤方便 debug
         st.exception(e)
