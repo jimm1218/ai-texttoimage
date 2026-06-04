@@ -11,10 +11,7 @@ st.set_page_config(page_title="AI 圖像生成器", page_icon="🎨")
 st.title("🎨 AI 圖像生成 Web App")
 st.write("輸入一段文字，讓 AI 為你創作圖片。")
 
-# 設定 Hugging Face API
-API_URL = "https://api-inference.huggingface.co/models/nvidia/Cosmos3-Super-Text2Image"
-
-def query(payload, token):
+def query(payload, token, api_url):
     """發送請求至 Hugging Face Inference API"""
     if not token:
         st.error("❌ 請先在左側邊欄輸入你的 Hugging Face Access Token。")
@@ -26,7 +23,7 @@ def query(payload, token):
     for attempt in range(max_retries):
         try:
             # 增加 timeout 參數 (例如 60 秒)，避免伺服器回應過慢導致連線強行中斷
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+            response = requests.post(api_url, headers=headers, json=payload, timeout=60)
             
             if response.status_code == 200:
                 return response.content
@@ -64,6 +61,19 @@ with st.sidebar:
     st.header("🔑 安全設定")
     user_token = st.text_input("輸入 Hugging Face Token:", type="password", help="請從你的 Hugging Face Settings > Tokens 取得 (需有 Read 權限)")
     st.info("提示：此 Token 僅用於此次請求，不會被儲存。")
+    
+    st.divider()
+    st.header("⚙️ 模型設定")
+    model_id = st.selectbox(
+        "選擇 AI 模型:",
+        (
+            "black-forest-labs/FLUX.1-schnell",
+            "stabilityai/sdxl-turbo", 
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            "nvidia/Cosmos3-Super-Text2Image"
+        ),
+        help="推薦使用 FLUX.1-schnell 或 sdxl-turbo，出圖速度最快且品質穩定。"
+    )
 
 # 介面佈局
 with st.form("gen_form"):
@@ -75,7 +85,8 @@ if submit:
         st.warning("請輸入提示詞！")
     else:
         with st.spinner("AI 正在繪圖中，請稍候..."):
-            image_bytes = query({"inputs": prompt}, user_token)
+            api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+            image_bytes = query({"inputs": prompt}, user_token, api_url)
             
             if image_bytes:
                 image = Image.open(io.BytesIO(image_bytes))
