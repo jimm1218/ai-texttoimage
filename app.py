@@ -12,7 +12,7 @@ st.title("🎨 AI 圖像生成 Web App")
 st.write("輸入一段文字，讓 AI 為你創作圖片。")
 
 # 設定 Hugging Face API
-API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+API_URL = "https://api-inference.huggingface.co/models/nvidia/Cosmos3-Super-Text2Image"
 
 def query(payload, token):
     """發送請求至 Hugging Face Inference API"""
@@ -49,12 +49,12 @@ def query(payload, token):
                 continue
             st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是 Streamlit Cloud 的暫時性網路問題。")
             with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
-                st.exception(e)
+                st.code(str(e))
             return None
         except Exception as e:
             st.error(f"❌ 發生非預期錯誤: {e}")
             with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
-                st.exception(e)
+                st.code(str(e))
             return None
             
     return None
