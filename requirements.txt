@@ -1,3 +1,5 @@
 streamlit
 requests
-Pillow
+pillow
+huggingface_hub
+python-dotenv
