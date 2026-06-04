@@ -20,14 +20,28 @@ def query(payload, token):
         return None
 
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 503:
-        st.warning("⚠️ 模型正在 Hugging Face 伺服器上載入中，請稍候 20-30 秒後再次點擊生成。")
-        return None
-    elif response.status_code != 200:
-        st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
-        return None
-    return response.content
+    try:
+        # 增加 timeout 參數 (例如 60 秒)，避免伺服器回應過慢導致連線強行中斷
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            return response.content
+        elif response.status_code == 503:
+            st.warning("⚠️ 模型正在 Hugging Face 伺服器上載入中（冷啟動），請稍候 20-30 秒後再次點擊生成。")
+        elif response.status_code == 401:
+            st.error("❌ Token 無效，請檢查你的 Hugging Face Token 是否正確且具備 Read 權限。")
+        else:
+            st.error(f"API 請求失敗 (Status: {response.status_code}): {response.text}")
+            
+    except requests.exceptions.ConnectionError:
+        st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是暫時性的，請檢查網路或稍後再試。")
+        # 開發階段：印出完整紅字錯誤方便 debug
+        st.exception(e)
+    except Exception as e:
+        st.error(f"❌ 發生非預期錯誤: {e}")
+        st.exception(e)
+        
+    return None
 
 # 側邊欄設定
 with st.sidebar:
