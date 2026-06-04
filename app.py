@@ -44,9 +44,16 @@ def query(payload, token, api_url):
             if attempt < max_retries - 1:
                 time.sleep(3)  # 網路抖動，等待 3 秒後自動重試連線
                 continue
-            st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是 Streamlit Cloud 的暫時性網路問題。")
+            
+            error_msg = str(e)
+            if "NameResolutionError" in error_msg:
+                st.error("📡 DNS 解析失敗：Streamlit Cloud 伺服器暫時無法連上外網。")
+                st.info("💡 **解決方法**：這是 Streamlit 免費伺服器的常見 Bug。請點擊畫面右下角的「Manage app」-> 選擇「Reboot app」來重啟伺服器。")
+            else:
+                st.error("📡 網路連線錯誤：無法連接到 Hugging Face 伺服器。這通常是 Streamlit Cloud 的暫時性網路問題。")
+                
             with st.expander("🛠️ 點此查看詳細錯誤資訊 (Debug)"):
-                st.code(str(e))
+                st.code(error_msg)
             return None
         except Exception as e:
             st.error(f"❌ 發生非預期錯誤: {e}")
