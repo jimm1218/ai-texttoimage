@@ -42,7 +42,8 @@ with st.sidebar:
             "black-forest-labs/FLUX.1-schnell",
             "stabilityai/sdxl-turbo", 
             "stabilityai/stable-diffusion-xl-base-1.0",
-            "nvidia/Cosmos3-Super-Text2Image"
+            "nvidia/Cosmos3-Super-Text2Image",
+            "tencent/HunyuanImage-3.0"
         ),
         help="推薦使用 FLUX.1-schnell 或 sdxl-turbo，出圖速度最快且品質穩定。"
     )
