@@ -1,3 +1,5 @@
+網站連結：https://ai-texttoimage-gg8jaevv6yiqd8d6ukyjm4.streamlit.app/
+
 # 🎨 AI 圖像生成 Web App
 
 這是一個基於 Python、Streamlit 與官方 `huggingface_hub` 套件建立的 AI 繪圖工具。
